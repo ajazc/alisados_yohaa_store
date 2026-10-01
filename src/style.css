@@ -26,6 +26,12 @@
   }
 }
 
+@layer components {
+  .admin-input {
+    @apply mt-1.5 block min-h-11 w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm font-normal outline-none focus:border-rose-400;
+  }
+}
+
 @layer utilities {
   /* Bloquea el scroll del body cuando hay un modal abierto */
   .min-h-dvh {

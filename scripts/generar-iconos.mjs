@@ -4,7 +4,7 @@
  *   npm run iconos
  *
  * Se ejecuta a mano cuando cambia el logo. Los archivos generados quedan
- * versionados en public/, asi que el build de Vercel no necesita sharp.
+ * versionados en public/, asi que el build de produccion no necesita sharp.
  */
 
 import sharp from "sharp";

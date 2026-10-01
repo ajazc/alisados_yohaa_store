@@ -5,6 +5,7 @@ import CategoryTabs from "./components/CategoryTabs.vue";
 import ProductCard from "./components/ProductCard.vue";
 import CartBar from "./components/CartBar.vue";
 import CheckoutDrawer from "./components/CheckoutDrawer.vue";
+import AdminProducts from "./components/AdminProducts.vue";
 import { fetchCatalogo } from "./lib/api.js";
 import { useCart } from "./composables/useCart.js";
 
@@ -13,6 +14,7 @@ const cargando = ref(true);
 const error = ref(null);
 const categoriaActiva = ref("todos");
 const drawerAbierto = ref(false);
+const adminAbierto = ref(false);
 
 const {
   itemsEnriquecidos,
@@ -56,6 +58,14 @@ function abrirDrawer() {
   drawerAbierto.value = true;
 }
 
+async function actualizarCatalogo() {
+  try {
+    productos.value = await fetchCatalogo({ fresh: true });
+  } catch (e) {
+    console.error("[catalogo] No se pudo actualizar despues de administrar productos", e);
+  }
+}
+
 /** Cambia la cantidad desde el drawer (delta). */
 function actualizarDesdeDrawer(codigo, delta) {
   const item = itemsEnriquecidos.value.find((p) => p.codigo === codigo);
@@ -66,7 +76,7 @@ function actualizarDesdeDrawer(codigo, delta) {
 
 <template>
   <div class="min-h-dvh bg-canvas text-ink">
-    <AppHeader />
+    <AppHeader @admin="adminAbierto = true" />
 
     <main class="mx-auto max-w-2xl px-4 pb-8">
       <CategoryTabs v-model="categoriaActiva" :counts="counts" />
@@ -128,6 +138,13 @@ function actualizarDesdeDrawer(codigo, delta) {
       @close="drawerAbierto = false"
       @update-quantity="actualizarDesdeDrawer"
       @clear="limpiar"
+    />
+
+    <AdminProducts
+      v-if="adminAbierto"
+      :productos="productos"
+      @close="adminAbierto = false"
+      @updated="actualizarCatalogo"
     />
   </div>
 </template>

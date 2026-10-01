@@ -8,42 +8,29 @@ El carrito arma un mensaje de pedido y lo envía por `wa.me`.
 ## Arquitectura
 
 ```
-Navegador ──► /api/productos (serverless Vercel) ──► https://ajazc.com.ar/api/...
-   (Vue)          corre en el SERVIDOR                    Django + DRF + JWT
+Navegador (Vue/Vite) ── HTTPS + CORS ──► https://ajazc.com.ar/api/...
+                                      Django REST Framework + JWT
 ```
 
-**El navegador nunca habla directo con la API Django.** Es una decisión de
-seguridad, no una preferencia:
+El navegador consulta el catálogo público y se autentica contra la API para
+administrar productos. Las credenciales se ingresan en el panel, se envían por
+HTTPS al endpoint de login y no se guardan; el JWT queda solo en memoria y se
+borra al cerrar el panel. La API debe aplicar permisos de lectura pública y
+escritura autenticada; CORS no reemplaza la autorización.
 
-- La API **no envía headers CORS**, así que un `fetch` desde `*.vercel.app` a
-  `ajazc.com.ar` sería bloqueado por el navegador.
-- `GET /api/productos/` **exige un JWT**, pese a que el README de `api-ajazc`
-  afirma que las lecturas son públicas (verificado: `401` sin token).
-- El access token **vence a los 60 minutos**.
-
-Si las credenciales de la API estuvieran embebidas en el bundle, cualquier
-visitante podría leerlas y con ese mismo token ejecutar `POST /api/productos/`,
-`PATCH /api/productos/<codigo>/editar/` y `DELETE /api/productos/<codigo>/`,
-es decir **modificar o borrar el catálogo completo**. Las credenciales viven
-solo en variables de entorno del servidor, y no tienen valor por defecto en el
-código: si faltan, la función serverless falla con un error explícito en los
-logs en vez de usar un fallback hardcodeado.
+El origen público `VITE_API_BASE_URL` se incluye en el bundle, pero no es un
+secreto. Nunca configures usuario, clave ni tokens con prefijo `VITE_`.
 
 ### Estructura
 
 ```
-api/
-  productos.js            Endpoint serverless: cachea y normaliza
-  _lib/apiClient.js       Login JWT + cache en memoria + refresh <5 min
-  _lib/products.js        Paginado DRF + normalización de tipos
-  _lib/verify.js          Verificación (ver abajo)
-
 src/
   App.vue                 Estado: carga, filtro de categoría, carrito
   config/business.js      Datos del negocio editables
   config/categorias.js    Tabs + heurística de categorización
   composables/useCart.js  Carrito reactivo + persistencia en localStorage
-  lib/api.js              Cliente HTTP del navegador
+  lib/api.js              Cliente HTTP directo para el catálogo
+  lib/adminApi.js         Login JWT y operaciones administrativas
   lib/whatsapp.js         Arma el mensaje y la URL de wa.me
   lib/format.js           ARS con Intl
   components/
@@ -63,23 +50,31 @@ public/                   manifest e íconos PWA
 
 ```bash
 npm install
-cp .env.example .env.local   # completar credenciales
-npm run vercel dev           # incluye las funciones serverless
+npm run dev
 ```
 
 ### Variables de entorno
 
 | Variable | Lado | Para qué |
 | --- | --- | --- |
-| `API_BASE_URL` | servidor | Base de la API Django |
-| `API_USERNAME` | servidor | Usuario del login |
-| `API_PASSWORD` | servidor | Password del login |
+| `VITE_API_BASE_URL` | cliente | URL pública de la API Django; por defecto `https://ajazc.com.ar` |
 | `VITE_WHATSAPP_NUMBER` | cliente | Destino de los pedidos. Internacional, solo dígitos: `5492966227320` |
 
-> **Nunca prefixar con `VITE_` las credenciales de la API.** Toda variable
-> `VITE_` se compila dentro del bundle y queda visible para cualquier visitante.
+La API debe permitir el origen del sitio en `CORS_ALLOWED_ORIGINS`. El endpoint
+de catálogo debe permitir `GET` público; las operaciones de administración
+requieren JWT.
 
-En Vercel: *Project → Settings → Environment Variables*.
+### Administración del catálogo
+
+El botón **Admin** del encabezado abre las secciones **Editar producto** y
+**Nuevo producto**. El panel solicita las credenciales de la API y realiza el
+login directamente desde el navegador. La clave se descarta tras iniciar
+sesión y el token solo se mantiene en memoria mientras el panel está abierto:
+
+- Crear: `POST /api/productos/`.
+- Editar: `PATCH /api/productos/<codigo>/editar/`.
+- Foto: archivo JPG, PNG, WebP, AVIF o GIF de hasta 3 MB, enviado como
+  `imagen` multipart.
 
 ### Iconos
 
@@ -98,7 +93,7 @@ transparencia en el home screen.
 
 **Si cambiás el logo**, reemplazá `src/logo.jpg` y volvé a correr `npm run
 iconos`. Los archivos de `public/` están versionados, así que el build de
-Vercel no necesita `sharp` (que es solo una devDependency).
+producción no necesita `sharp` (que es solo una devDependency).
 
 ### WhatsApp
 
@@ -117,12 +112,11 @@ ambos con valor por defecto en el código. Para cambiarlos:
 ## Verificación
 
 ```bash
-node --env-file-if-exists=.env.local api/_lib/verify.js
+node scripts/verify.js
 ```
 
-Ejecuta 25 checks contra la API real: tipos normalizados, cache del token,
-categorización por heurística, contenido del mensaje de WhatsApp y encoding de
-la URL de `wa.me`. Requiere `API_USERNAME` / `API_PASSWORD` en el entorno.
+Comprueba la lectura pública y normalización del catálogo, la categorización,
+el mensaje de pedido y la URL de WhatsApp. Requiere conexión con la API.
 
 ```bash
 node scripts/verificar-iconos.mjs
@@ -157,13 +151,13 @@ La API no modela categorías ni imágenes. Lo que hace la app:
   texto por categoría (`DESCRIPCION_POR_DEFECTO`).
 
 - **Precios**: la API los devuelve como string (`"8000.00"`). Se convierten a
-  `number` en el serverless y se formatean con `Intl` en es-AR.
+  `number` en el cliente y se formatean con `Intl` en es-AR.
 
 - **Stock**: `cantidad_disponible` acota el carrito. Al llegar al tope el botón
   queda en "Maximo alcanzado".
 
-- **Paginación**: DRF pagina por defecto; el serverless recorre `next` para
-  traer el catálogo completo en una sola respuesta.
+- **Paginación**: DRF pagina por defecto; el cliente recorre `next` para traer
+  el catálogo completo.
 
 ---
 

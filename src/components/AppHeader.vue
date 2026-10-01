@@ -8,6 +8,7 @@ import logoUrl from "../logo.jpg";
  * cargar. No hace falta lift-earlo al padre.
  */
 const avatarFailed = ref(false);
+const emit = defineEmits(["admin"]);
 
 // Importar desde src/ (y no copiar a public/) da a Vite un archivo con hash de
 // contenido: al cambiar el logo el cache se invalida solo.
@@ -77,7 +78,7 @@ function onAvatarLoad(event) {
       </div>
 
       <!-- Accesos rapidos -->
-      <div class="mt-3 grid grid-cols-3 gap-2">
+      <div class="mt-3 grid grid-cols-4 gap-2">
         <a
           :href="BUSINESS.instagram"
           target="_blank"
@@ -115,6 +116,19 @@ function onAvatarLoad(event) {
           </svg>
           Ubicacion
         </a>
+        <button
+          type="button"
+          class="flex items-center justify-center gap-1.5 rounded-full border border-rose-200 bg-surface py-1.5 text-xs font-medium text-ink-soft transition active:scale-95"
+          aria-label="Administrar productos"
+          title="Administrar productos"
+          @click="emit('admin')"
+        >
+          <svg class="h-3.5 w-3.5 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="10" width="16" height="11" rx="2" />
+            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+          </svg>
+          Admin
+        </button>
       </div>
     </div>
   </header>
