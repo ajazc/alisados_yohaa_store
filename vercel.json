@@ -3,12 +3,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "crons": [
-    {
-      "path": "/api/productos",
-      "schedule": "0 * * * *"
-    }
-  ],
   "headers": [
     {
       "source": "/assets/(.*)",
