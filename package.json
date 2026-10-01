@@ -20,6 +20,6 @@
   },
   "devDependencies": {
     "sharp": "^0.35.5",
-    "vercel": "^39.2.2"
+    "vercel": "^62.1.0"
   }
 }
