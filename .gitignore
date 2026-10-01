@@ -1,0 +1,15 @@
+node_modules
+dist
+dist-ssr
+.vercel
+
+# Credenciales: nunca al repo.
+.env
+.env.*
+!.env.example
+*.local
+
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
